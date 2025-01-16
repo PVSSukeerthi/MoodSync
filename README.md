@@ -1,7 +1,7 @@
 # MoodSync: Mood-Based Visual & Audio Effects Recommendation System through Facial Recognition
 
 ## Overview
-MoodSync is a mood-based recommendation system leveraging facial recognition to enhance mental well-being. Built on the NXP EdgeReady Smart Machine Interface (SM HMI) solution, our project utilizes the i.MX RT117H crossover MCU. By detecting the user’s mood, MoodSync curates calming visuals, relaxing physical activities, and mood-specific music to uplift their mental state.
+MoodSync is a mood-based recommendation system leveraging facial recognition to enhance mental well-being. Built on the NXP EdgeReady Smart Machine Interface (SHMI) solution, our project utilizes the i.MX RT117H crossover MCU. By detecting the user’s mood, MoodSync curates calming visuals, relaxing physical activities, and mood-specific music to uplift their mental state.
 
 
 This project is in its demo stage and aims to simplify how moods can be understood and improved.
