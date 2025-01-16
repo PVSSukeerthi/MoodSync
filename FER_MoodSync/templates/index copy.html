@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- <title>MoodSync</title> -->
+    <div id="title-container">
+        <h1>MoodSync</h1>
+    </div>
+    <style>
+        /* General Reset */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            background: linear-gradient(135deg, #0078d7, #00c6ff);
+            color: #fdfdfd;
+        }
+
+        button {
+            padding: 12px 24px;
+            font-size: 16px;
+            cursor: pointer;
+            background-color: #fff;
+            color: #0078d7;
+            border: none;
+            border-radius: 25px;
+            margin: 10px 0;
+            transition: all 0.3s ease;
+        }
+
+        button:hover {
+            background-color: #0078d7;
+            color: white;
+        }
+
+        #result {
+            margin-top: 20px;
+            font-size: 18px;
+            color: #fff;
+            text-align: center;
+            padding: 10px;
+            background: rgba(0, 0, 0, 0.1);
+            border-radius: 10px;
+        }
+
+        /* Video Styling */
+        #camera {
+            width: 300px;
+            height: auto;
+            border: 3px solid #fff;
+            border-radius: 15px;
+            box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.3);
+            background-color: black;
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+
+<body>
+    <!-- <div id="title-container">
+        <h1>MoodSync</h1>
+    </div> -->
+    <video id="camera" autoplay></video>
+    <button id="start-detection">Start Detection</button>
+    <button id="show-emotions" style="display: none;">Show Top Emotions</button>
+    <button id="start-again" style="display: none;">Start Again</button>
+    <div id="result"></div>
+
+    <script>
+        const startDetectionButton = document.getElementById('start-detection');
+        const showEmotionsButton = document.getElementById('show-emotions');
+        const startAgainButton = document.getElementById('start-again');
+        const resultDiv = document.getElementById('result');
+        const cameraElement = document.getElementById('camera');
+        let captureInterval;
+        let mediaStream;
+
+        // Initialize the camera preview
+        async function initializeCamera() {
+            try {
+                mediaStream = await navigator.mediaDevices.getUserMedia({ video: true });
+                cameraElement.srcObject = mediaStream;
+            } catch (error) {
+                console.error('Error accessing camera:', error);
+                resultDiv.innerText = 'Unable to access camera. Please check permissions.';
+            }
+        }
+
+        // Capture and send frame to the backend
+        async function captureImage() {
+            const canvas = document.createElement('canvas');
+            const context = canvas.getContext('2d');
+
+            canvas.width = cameraElement.videoWidth;
+            canvas.height = cameraElement.videoHeight;
+            context.drawImage(cameraElement, 0, 0, canvas.width, canvas.height);
+
+            const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg'));
+            const formData = new FormData();
+            formData.append('file', blob, 'frame.jpg');
+
+            try {
+                await fetch('/process-frame', {
+                    method: 'POST',
+                    body: formData,
+                });
+            } catch (error) {
+                console.error('Error sending frame to backend:', error);
+            }
+        }
+
+        // Fetch top emotions and display on the screen
+        // async function fetchTopEmotions() {
+        //     try {
+        //         const response = await fetch('/get-emotions');
+        //         const result = await response.json();
+
+        //         if (result.emotions) {
+        //             resultDiv.innerHTML = `
+        //                 <h3>Top Detected Emotions:</h3>
+        //                 <ul>
+        //                     ${result.emotions.map(emotion => `
+        //                         <li><strong>${emotion.emotion}</strong>: ${emotion.percentage}</li>
+        //                     `).join('')}
+        //                 </ul>
+        //             `;
+        //         } else {
+        //             resultDiv.innerText = result.error || 'No emotions detected yet.';
+        //         }
+        //     } catch (error) {
+        //         resultDiv.innerText = 'Error fetching emotions: ' + error.message;
+        //     }
+        // }
+        async function fetchTopEmotions() {
+            try {
+                const response = await fetch('/get-emotions');
+                const result = await response.json();
+
+                if (result.emotions) {
+                    resultDiv.innerHTML = `
+                <h3>Top Detected Emotions:</h3>
+                <div class="emotion-list">
+                    ${result.emotions.map(emotion => `
+                        <div class="emotion-item">
+                            <strong>${emotion.emotion}</strong>: ${emotion.percentage}
+                        </div>
+                    `).join('')}
+                </div>
+            `;
+                } else {
+                    resultDiv.innerText = result.error || 'No emotions detected yet.';
+                }
+            } catch (error) {
+                resultDiv.innerText = 'Error fetching emotions: ' + error.message;
+            }
+        }
+
+
+        // Clear emotions on the backend
+        async function clearEmotions() {
+            try {
+                const response = await fetch('/clear-emotions', { method: 'POST' });
+                const result = await response.json();
+                resultDiv.innerText = result.message || 'Emotions cleared.';
+            } catch (error) {
+                resultDiv.innerText = 'Error clearing emotions: ' + error.message;
+            }
+        }
+
+        // Handle Start Detection
+        startDetectionButton.addEventListener('click', () => {
+            startDetectionButton.style.display = 'none';
+            showEmotionsButton.style.display = 'inline-block';
+            startAgainButton.style.display = 'inline-block';
+
+            // Start capturing frames every 1 second
+            captureInterval = setInterval(captureImage, 2000);
+        });
+
+        // Handle Show Emotions
+        showEmotionsButton.addEventListener('click', fetchTopEmotions);
+
+        // Handle Start Again
+        startAgainButton.addEventListener('click', async () => {
+            await clearEmotions(); // Clear emotions in backend
+            clearInterval(captureInterval); // Stop capturing frames
+
+            // Reset UI
+            startDetectionButton.style.display = 'inline-block';
+            showEmotionsButton.style.display = 'none';
+            startAgainButton.style.display = 'none';
+
+            // Restart the camera preview
+            await initializeCamera();
+        });
+
+        // Initialize the camera on page load
+        initializeCamera();
+    </script>
+</body>
+
+</html>
